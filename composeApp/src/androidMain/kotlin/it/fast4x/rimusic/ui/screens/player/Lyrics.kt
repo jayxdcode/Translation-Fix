@@ -176,6 +176,8 @@ import timber.log.Timber
 import kotlin.Float.Companion.POSITIVE_INFINITY
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import org.jsoup.Jsoup
+import java.net.URLEncoder
 
 
 @UnstableApi
@@ -396,62 +398,80 @@ fun Lyrics(
             title = cleanPrefix(mediaMetadata.title?.toString().orEmpty())
         }
 
-        fun translateLyricsWithRomanization(output: MutableState<String>, textToTranslate: String, isSync: Boolean, destinationLanguage: Language = Language.AUTO) = @Composable{
-            LaunchedEffect(showSecondLine, romanization, textToTranslate, destinationLanguage){
+        suspend fun deepL(untranslatedLrc: String, srcLang: String, targLang: String): String? {
+          return withContext(Dispatchers.IO) {
+              try {
+                  val baseUrl = "https://www.deepl.com/en/translator#$srcLang/$targLang/"
+                  val cleanInput = URLEncoder.encode(untranslatedLrc, "UTF-8")
+                  val finalUrl = "$baseUrl$cleanInput%0A"
+                  val response = khttp.get(finalUrl)
+                  val document = Jsoup.parse(response.text)
+                  val targetTextarea = document.selectFirst("textarea[dl-test=translator-target-input]")
+                  targetTextarea?.text()
+              } catch (e: Exception) {
+                  e.printStackTrace()
+                  null
+              }
+          }
+      }
+
+      suspend fun libreTranslate(untranslatedLrc: String, srcLang: String, targLang: String): String? {
+          return withContext(Dispatchers.IO) {
+              try {
+                  val url = "https://libretranslate.com/translate"
+                  val params = mapOf(
+                      "q" to untranslatedLrc,
+                      "source" to srcLang,
+                      "target" to targLang,
+                      "format" to "text"
+                  )
+                  val response = khttp.post(url, data = params)
+                  if (response.statusCode == 200) {
+                      val json = response.jsonObject
+                      json.getString("translatedText")
+                  } else {
+                      Timber.e("LibreTranslate failed with status ${response.statusCode}")
+                      null
+                  }
+              } catch (e: Exception) {
+                  Timber.e("LibreTranslate error: ${e.stackTraceToString()}")
+                  null
+              }
+          }
+      }
+
+      fun detectLanguage(text: String): String {
+          // A placeholder function to detect language, replace with actual implementation
+          return "auto"
+      }
+
+      val deeplSourceLanguages = setOf(
+          "AR", "BG", "CS", "DA", "DE", "EL", "EN", "ES", "ET", "FI", "FR", 
+          "HU", "ID", "IT", "JA", "KO", "LT", "LV", "NB", "NL", "PL", "PT", 
+          "RO", "RU", "SK", "SL", "SV", "TR", "UK", "ZH"
+      )
+
+        @Composable
+        fun translateLyricsWithRomanization(output: MutableState<String>, textToTranslate: String, isSync: Boolean, destinationLanguage: Language = Language.AUTO) {
+            LaunchedEffect(showSecondLine, romanization, textToTranslate, destinationLanguage) {
                 var destLanguage = destinationLanguage
                 val result = withContext(Dispatchers.IO) {
                     try {
-
-                        /** used to find the source language of the text and detect CHINESE_TRADITIONAL*/
-                        val helperTranslation = translator.translate(
-                            textToTranslate,
-                            Language.CHINESE_TRADITIONAL,
-                            Language.AUTO
-                        )
-                        if(destinationLanguage == Language.AUTO){
-                            destLanguage = if(helperTranslation.translatedText == textToTranslate){
-                                Language.CHINESE_TRADITIONAL
-                            } else {
-                                helperTranslation.sourceLanguage
-                            }
-                        }
-                        val mainTranslation = translator.translate(
-                            textToTranslate,
-                            destLanguage,
-                            Language.AUTO
-                        )
-                        val outputText = if (textToTranslate == "") {
-                            ""
-                       }
-                        else if (!showSecondLine || (mainTranslation.sourceText == mainTranslation.translatedText)){
-                            if (romanization == Romanization.Off) {
-                                if (translateEnabled) mainTranslation.translatedText else textToTranslate
-                            }
-                            else if (romanization == Romanization.Original) if (helperTranslation.sourceText == helperTranslation.translatedText) helperTranslation.sourcePronunciation else mainTranslation.sourcePronunciation ?: mainTranslation.sourceText
-                            else if (romanization == Romanization.Translated) mainTranslation.translatedPronunciation ?: mainTranslation.translatedText
-                            else if (helperTranslation.sourceText == helperTranslation.translatedText) helperTranslation.sourcePronunciation else mainTranslation.sourcePronunciation ?: mainTranslation.sourceText
+                        val sourceLanguage = detectLanguage(textToTranslate)
+                        val translationService = if (sourceLanguage in deeplSourceLanguages && textToTranslate.length <= 1500) {
+                            ::deepL
                         } else {
-                            if (romanization == Romanization.Off) {
-                                textToTranslate + "\\n[${mainTranslation.translatedText}]"
-                            } else if (romanization == Romanization.Original) {
-                                if (helperTranslation.sourceText == helperTranslation.translatedText){
-                                    helperTranslation.sourcePronunciation
-                                } else {mainTranslation.sourcePronunciation ?: mainTranslation.sourceText} + "\\n[${mainTranslation.translatedText}]"
-                            } else if (romanization == Romanization.Translated) {
-                                textToTranslate + "\\n[${mainTranslation.translatedPronunciation ?: mainTranslation.translatedText}]"
-                            } else
-                                if (helperTranslation.sourceText == helperTranslation.translatedText){
-                                    helperTranslation.sourcePronunciation
-                                } else {mainTranslation.sourcePronunciation ?: mainTranslation.sourceText} + "\\n[${mainTranslation.translatedPronunciation ?: mainTranslation.translatedText}]"
+                            ::libreTranslate
                         }
-                        outputText?.replace("\\r","\r")?.replace("\\n","\n")
-
+                        val translation = translationService(textToTranslate, sourceLanguage, destinationLanguage.code)
+                        translation ?: ""
                     } catch (e: Exception) {
-                        if(isSync){
+                        if (isSync) {
                             Timber.e("Lyrics sync translation ${e.stackTraceToString()}")
                         } else {
                             Timber.e("Lyrics not sync translation ${e.stackTraceToString()}")
                         }
+                        ""
                     }
                 }
                 val translatedText =
@@ -981,7 +1001,7 @@ fun Lyrics(
                             }
 
                             //Rainbow Shimmer
-                            val infiniteTransition = rememberInfiniteTransition()
+                            val infiniteTransition  rememberInfiniteTransition()
 
                             val offset by infiniteTransition.animateFloat(
                                 initialValue = 0f,
