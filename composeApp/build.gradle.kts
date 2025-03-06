@@ -316,8 +316,12 @@ dependencies {
     implementation (libs.hypnoticcanvas.shaders)
 
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.5.21")
-    implementation("khttp:khttp:1.0.0") // Add khttp dependency
     implementation("org.jsoup:jsoup:1.14.3") // Add jsoup dependency for HTML parsing
+
+    implementation("io.ktor:ktor-client-core:2.3.8")
+    implementation("io.ktor:ktor-client-cio:2.3.8") // CIO engine for JVM
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.8")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.8")
     
     implementation(libs.room)
     ksp(libs.room.compiler)
