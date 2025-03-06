@@ -179,6 +179,7 @@ import kotlin.time.Duration.Companion.seconds
 
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import khttp.responses.Response
 import khttp.post
 import khttp.get
 import java.net.URLEncoder
