@@ -315,8 +315,9 @@ dependencies {
     implementation (libs.hypnoticcanvas)
     implementation (libs.hypnoticcanvas.shaders)
 
-    implementation(kotlin("stdlib"))
-    implementation("org.jsoup:jsoup:1.14.3")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.5.21")
+    implementation("khttp:khttp:1.0.0") // Add khttp dependency
+    implementation("org.jsoup:jsoup:1.14.3") // Add jsoup dependency for HTML parsing
     
     implementation(libs.room)
     ksp(libs.room.compiler)
