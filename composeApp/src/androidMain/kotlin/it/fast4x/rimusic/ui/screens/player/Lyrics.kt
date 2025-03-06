@@ -179,10 +179,18 @@ import kotlin.time.Duration.Companion.seconds
 
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import khttp.responses.Response
-import khttp.post
-import khttp.get
 import java.net.URLEncoder
+
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+
+val client = HttpClient(CIO)
+
+suspend fun httpGet(url: String) = client.get(url).bodyAsText()
+suspend fun httpPost(url: String, data: Map<String, String>) = client.post(url) { setBody(data) }.bodyAsText()
 
 
 @UnstableApi
@@ -409,7 +417,7 @@ fun Lyrics(
                   val baseUrl = "https://www.deepl.com/en/translator#$srcLang/$targLang/"
                   val cleanInput = URLEncoder.encode(untranslatedLrc, "UTF-8")
                   val finalUrl = "$baseUrl$cleanInput%0A"
-                  val response = khttp.get(finalUrl)
+                  val response = httpGet(finalUrl)
                   val document = Jsoup.parse(response.text)
                   val targetTextarea = document.selectFirst("textarea[dl-test=translator-target-input]")
                   targetTextarea?.text()
@@ -430,7 +438,7 @@ fun Lyrics(
                       "target" to targLang,
                       "format" to "text"
                   )
-                  val response = khttp.post(url, data = params)
+                  val response = httpPost(url, params)
                   if (response.statusCode == 200) {
                       val json = response.jsonObject
                       json.getString("translatedText")
