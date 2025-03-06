@@ -1001,7 +1001,7 @@ fun Lyrics(
                             }
 
                             //Rainbow Shimmer
-                            val infiniteTransition  rememberInfiniteTransition()
+                            val infiniteTransition = rememberInfiniteTransition()
 
                             val offset by infiniteTransition.animateFloat(
                                 initialValue = 0f,
