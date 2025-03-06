@@ -25,7 +25,7 @@ import java.net.URL
 private val GSON = Gson()
 private lateinit var configurationList: List<Configuration>
 
-private fun initConfiguration( context: Context) {
+private fun initConfiguration(context: Context) {
     try {
         val fileStream: InputStream =
             context.resources.openRawResource(R.raw.configuration)
@@ -35,26 +35,23 @@ private fun initConfiguration( context: Context) {
 
         configurationList = json.map { GSON.fromJson(it, Configuration::class.java) }
             .sortedBy { it.name }
-    } catch ( e: Exception ) {
-        Timber.e( e.stackTraceToString() )
+    } catch (e: Exception) {
+        Timber.e(e.stackTraceToString())
         println("Configuration initConfiguration Exception: ${e.message}")
         configurationList = emptyList()
     }
 }
 
 fun getConfiguration(name: String? = null): String {
-
-    if( !::configurationList.isInitialized )
-        initConfiguration( appContext() )
+    if (!::configurationList.isInitialized)
+        initConfiguration(appContext())
 
     return configurationList.find { it.name == name }?.value ?: ""
 }
 
 fun getConfigurationsList(): List<Configuration> {
-
-    if( !::configurationList.isInitialized )
-        initConfiguration( appContext() )
+    if (!::configurationList.isInitialized)
+        initConfiguration(appContext())
 
     return configurationList
 }
-
