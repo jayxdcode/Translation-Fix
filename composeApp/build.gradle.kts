@@ -315,6 +315,9 @@ dependencies {
     implementation (libs.hypnoticcanvas)
     implementation (libs.hypnoticcanvas.shaders)
 
+    implementation(kotlin("stdlib"))
+    implementation("org.jsoup:jsoup:1.14.3")
+    
     implementation(libs.room)
     ksp(libs.room.compiler)
 
