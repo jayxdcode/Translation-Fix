@@ -21,6 +21,7 @@ import it.fast4x.rimusic.extensions.contributors.models.Translator
 import timber.log.Timber
 import java.io.InputStream
 import java.net.URL
+import java.io.IOException
 
 private val GSON = Gson()
 private lateinit var configurationList: List<Configuration>
@@ -28,13 +29,17 @@ private lateinit var configurationList: List<Configuration>
 private fun initConfiguration(context: Context) {
     try {
         val fileStream: InputStream =
-            context.resources.openRawResource(R.raw.configuration)
+            context.resources.openRawResource(R.raw.configuration).use { inputStream ->
+                val json: JsonArray =
+                    GSON.fromJson(inputStream.bufferedReader(), JsonArray::class.java)
 
-        val json: JsonArray =
-            GSON.fromJson(fileStream.bufferedReader(), JsonArray::class.java)
-
-        configurationList = json.map { GSON.fromJson(it, Configuration::class.java) }
-            .sortedBy { it.name }
+                configurationList = json.map { GSON.fromJson(it, Configuration::class.java) }
+                    .sortedBy { it.name }
+            }
+    } catch (e: IOException) {
+        Timber.e(e.stackTraceToString())
+        println("Configuration initConfiguration IOException: ${e.message}")
+        configurationList = emptyList()
     } catch (e: Exception) {
         Timber.e(e.stackTraceToString())
         println("Configuration initConfiguration Exception: ${e.message}")
